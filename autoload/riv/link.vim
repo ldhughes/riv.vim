@@ -157,7 +157,9 @@ fun! riv#link#open() "{{{
         endif
         return 3
     elseif !empty(mo.groups[5])
+        let riv_prev_link = [expand('%:p'), getpos('.')]
         call riv#file#edit(riv#link#path(mo.groups[5]))
+        let b:riv_prev_link = riv_prev_link
         return 4
     elseif !empty(mo.groups[6])
         if riv#path#is_relative(mo.str)
@@ -171,10 +173,21 @@ fun! riv#link#open() "{{{
             let file = expand(mo.str)
         endif
         update
+        let riv_prev_link = [expand('%:p'), getpos('.')]
         call riv#file#edit(file)
+        let b:riv_prev_link = riv_prev_link
         return 5
     endif
 endfun "}}}
+
+function! riv#link#back_link() "{{{
+  if exists("b:riv_prev_link")
+    " go back to saved wiki link
+    let prev_word = b:riv_prev_link
+    execute ":e ".substitute(prev_word[0], '\s', '\\\0', 'g')
+    call setpos('.', prev_word[1])
+  endif
+endfunction "}}}
 
 fun! riv#link#path(str) "{{{
     " return the local file path contained in the string.
