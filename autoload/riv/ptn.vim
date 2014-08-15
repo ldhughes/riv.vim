@@ -3,7 +3,7 @@
 "    File: ptn.vim
 " Summary: for all the patterns
 "  Author: Rykka G.F
-"  Update: 2012-09-13
+"  Update: 2014-08-14
 "=============================================
 let s:cpo_save = &cpo
 set cpo-=C
@@ -359,6 +359,7 @@ fun! riv#ptn#init() "{{{
     "
     "    2. sphinx style
     "       :doc:`xxx`   
+    "       :file`/xxx/xxx.rst`
     "       :download:`/xxx/xxx.rst`
     "
     " NOTE:  the [[/xxx.rst]] for converting are not the same with 
@@ -375,8 +376,23 @@ fun! riv#ptn#init() "{{{
 
     let s:p.file_ext_ptn = g:_riv_t.doc_exts
                 \.'|'. join(g:_riv_t.file_ext_lst,'|')
+    let s:p.file_ext_ptn = s:p.file_ext_ptn .'vimrc|bashrc|zshrc'
+
     " NOTE: the ~/.xxx should not highlight  '~/.' part
-    let file_name = '[[:alnum:]~./][[:alnum:]~:./\\_-]*[[:alnum:]/\\]'
+    
+
+    " XXX Use new filename ptn to match all unicode file names.
+    " Using this will make matching it much slower.
+    " Is it worthing this???
+    
+    "
+    " XXX
+    " There is a bug that the filename must contain more than 
+    " one str, Solving it may made this ptn more complex.
+    " So Skip.
+    "
+    " let file_name = '[[:alnum:]~./][[:alnum:]~:./\\_-]*[[:alnum:]/\\]'
+    let file_name = '%([^[:cntrl:][:punct:][:space:]]|[~./])%([^[:cntrl:][:punct:][:space:]]|[~:./\\_-])*%([^[:cntrl:][:punct:][:space:]]|[/\\])'
     
     " The link for ext file, for in vim only.
     if g:riv_file_ext_link_hl == 1
@@ -399,7 +415,7 @@ fun! riv#ptn#init() "{{{
         " :doc:`file` for rst document
         " :download:`file.vim` for file link
         " :doc:`Test <test.rst>` could be used
-        let link_file2 = fname_bgn.'@<=:%(doc|download):`%(' 
+        let link_file2 = fname_bgn.'@<=:%(doc|download|file):`%(' 
                     \. file_name .'|[^`<>]*\<'.file_name.'\>'
                     \.')`\ze'. fname_end 
     " else
@@ -407,7 +423,7 @@ fun! riv#ptn#init() "{{{
     " endif
 
     let s:p.moin_link_str = '\[\[\zs.*\ze\]\]'
-    let s:p.sphinx_link_str = ':\%(doc\|download\):`\([^`<>]*<\zs[^`>]*\ze>\|\zs.*\ze\)`'
+    let s:p.sphinx_link_str = ':\%(doc\|download|file\):`\([^`<>]*<\zs[^`>]*\ze>\|\zs.*\ze\)`'
 
     let s:p.link_file0 = '\v'. link_file0
     let s:p.link_file1 = '\v'. link_file1
@@ -418,8 +434,11 @@ fun! riv#ptn#init() "{{{
     " `xxx xx`_
     "  xxx__
     " [#]_ [*]_  [#xxx]_  [3]_    and citation [xxxx]_
-    let ref_name = '[[:alnum:]]+%([_.-][[:alnum:]]+)*'
+    " NOTE: the rst recongnize unicode_char_ target and refernce
+    " So use [^[:punct]] here.
+    let ref_name = '[^[:cntrl:][:punct:][:space:]]+%([_.-][^[:space:][:punct:][:cntrl:]]+)*'
     let ref_end = '%($|\s|[''")\]}>/:.,;!?\\-])'
+    let ref_bgn = '%(\s|^|[''"([{</:])'
 
     let s:p.ref_name = ref_name
     let s:p.ref_end = ref_end
@@ -446,17 +465,19 @@ fun! riv#ptn#init() "{{{
     " .. __:   or   __
     " `xxx  <xxx>`
     let tar_footnote = '^\.\.\s\zs\[%(\d+|#|#='.ref_name .')\]\ze%(\s|$)'
-    let tar_inline = '%(\s|^|[''"([{</:])\zs_`[^`\\]+`\ze'.ref_end
+    let tar_inline = ref_bgn.'\zs_`[^`\\]+`\ze'.ref_end
     let tar_normal = '^\.\.\s\zs_[^:\\]+:\ze%(\s|$)'
     let tar_anonymous = '^\.\.\s\zs__:\ze%(\s|$)|^\zs__\ze%(\s|$)'
-    let tar_embed  = '^%(\s|\_^)\zs_`.+\s<\zs.+>`_\ze'.ref_end
+
+    " In fact, it's inline link, that's a reference 
+    let tar_embed  = '^%(\s|\_^)\zs`.+\s\<\zs.+\>`_\ze'.ref_end
 
     let s:p.link_tar_footnote = '\v'.tar_footnote
     let s:p.link_tar_inline = '\v'.tar_inline
     let s:p.link_tar_normal = '\v'.tar_normal
     let s:p.link_tar_anonymous = '\v'.tar_anonymous
-
     let s:p.link_tar_embed  = '\v'.tar_embed
+
 
     let link_target = tar_normal
             \.'|'. tar_inline .'|'. tar_footnote .'|'. tar_anonymous
@@ -464,7 +485,20 @@ fun! riv#ptn#init() "{{{
     let s:p.link_line_target = '\v'.tar_normal
             \.'|'. tar_footnote .'|'. tar_anonymous
 
+    " The link location in link target.
+    let loc_footnote = '^\.\.\s\[%(\d+|#|#='.ref_name .')\]%(\s|$)\zs.*'
+    let loc_inline = ref_bgn.'_`\zs[^`\\]+\ze`'.ref_end
+    let loc_normal = '^\.\.\s_[^:\\]+:%(\s|$)\zs.*'
+    let loc_anonymous = '^\.\.\s__:%(\s|$)\zs|^__%(\s|$)\zs.*'
+    let loc_embed  = '^%(\s|\_^)`.+\s\<\zs.+\ze\>`_'.ref_end
 
+    let s:p.location = '\v'.loc_inline
+                \.'|'. loc_normal
+                \.'|'.loc_anonymous
+                \.'|'.loc_footnote
+    let s:p.loc_embed = '\v'.loc_embed 
+
+    let s:p.loc_normal = '\v'.loc_normal
 
     " sub match for all_link:
     " 1 link_tar
@@ -473,12 +507,11 @@ fun! riv#ptn#init() "{{{
     " 4 link_uri_body
     " 5 link_file
     for i in range(3)
-        let s:p['link_all'.i] = '\v('. link_target 
-                    \ . ')|(' . link_reference
-                    \ . ')|(' . link_uri 
-                    \ . ')|(' . link_file{i}
-                    \ . ')|(' . ext_file_link
-                    \. ')'
+        let s:p['link_all'.i] = '\v('. link_target . ')' 
+                    \ . '|(' . link_reference . ')' 
+                    \ . '|(' . link_uri  . ')' 
+                    \ . '|(' . link_file{i} . ')' 
+                    \ . '|(' . ext_file_link . ')' 
     endfor
     "}}}4
     "
@@ -544,10 +577,17 @@ fun! riv#ptn#exp_con_idt(line) "{{{
 endfun "}}}
 
 fun! riv#ptn#get(ptn,row) "{{{
+    " get the pattern at row and indent > 0
+    
+    " return 0 if find nothhing.
+    " else return the pattern's row
     
     let row = prevnonblank(a:row)
 
     let save_pos = getpos('.')
+
+    " XXX
+    " can we use another method without moving cursor.
     call cursor(row,1)
 
     while getline(row) !~ a:ptn && row != 0
