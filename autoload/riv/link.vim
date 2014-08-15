@@ -213,10 +213,12 @@ fun! riv#link#open(...) "{{{
                     let loc = fnamemodify(loc, ":s?html?rst?")
                 endif
                 if s:is_file(loc) || loc =~ s:p.ext_file_link
+                    let riv_prev_link = [expand('%:p'), getpos('.')]
                     call riv#file#edit(loc)
+                    let b:riv_prev_link = riv_prev_link
                     call riv#echo("Use :RivLinkShow <C-E>ks to move to link's location.")
                     return 2
-              endif
+                endif
             endif
         endif
         " put cursor on location
@@ -228,7 +230,9 @@ fun! riv#link#open(...) "{{{
         if !empty(mo.groups[4])             " it's file://xxx
             if mo.str =~ '^file'
                 update
+                let riv_prev_link = [expand('%:p'), getpos('.')]
                 call riv#file#edit(expand(mo.groups[4]))
+                let b:riv_prev_link = riv_prev_link
             else
                 " vim will expand the # and % , so escape it.
                 call riv#link#browse(mo.groups[4])
