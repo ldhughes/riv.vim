@@ -3,7 +3,7 @@
 "    File: riv/create.vim
 " Summary: Create miscellaneous things.
 "  Author: Rykka G.Forest
-"  Update: 2012-09-17
+"  Update: 2014-08-16
 "=============================================
 let s:cpo_save = &cpo
 set cpo-=C
@@ -21,16 +21,16 @@ fun! s:norm_ref(str) "{{{
         return ''.a:str.'_'
     endif
 endfun "}}}
-fun! s:norm_tar_line(str, loc) "{{{
+fun! s:norm_tar(str) "{{{
     " return normalized tar name
     " >>> echo s:norm_tar_line('其他', 'hello.rst')
     " .. _其他: hello.rst
     " >>> echo s:norm_tar_line('sep one.rst', 'hello.rst')
     " .. _`sep one.rst`: hello.rst
     if a:str !~ '\v^'.s:p.ref_name.'$'
-        return '.. _`'.a:str.'`: '.a:loc
+        return '.. _`'.a:str.'`: '
     else
-        return '.. _'.a:str.': '.a:loc
+        return '.. _'.a:str.': '
     endif
 endfun "}}}
 fun! s:normal_phase(text) "{{{
@@ -114,7 +114,7 @@ fun! s:expand_link(word,...) "{{{
         else
             let loc = a:0 ? a:1 : word
             let ref = s:norm_ref(word)
-            let tar = word
+            let tar = s:norm_tar(word)
         endif
         return [ref, tar, loc]
     endif
@@ -149,7 +149,18 @@ fun! s:get_phase_obj() "{{{
     endif
     return obj
 endfun "}}}
-fun! riv#create#link() "{{{
+fun! riv#create#link(...) range "{{{
+    " TODO: add visual mode support for creating phase link.
+    " if a:0 && a:1 == 'v'
+    "     echom 'V'
+    "     let _v = @v
+    "     " get visual lines
+    "     norm! gv"vy
+    "     let vs = @v
+    "     let @v = _v
+    "     echom vs
+    " endif
+    "
     let [row, col] = [line('.'), col('.')]
     let line = getline(row)
     let eof = line('$')
@@ -158,6 +169,7 @@ fun! riv#create#link() "{{{
     if empty(obj)
         let obj = s:get_cWORD_obj()
     endif
+
     if !empty(obj)
         let word = obj.str
         let idx  = obj.start + 1
@@ -187,7 +199,7 @@ fun! riv#create#link() "{{{
 
     if loc =~ '^\s*$' | return | endif
 
-    let tar_line = s:norm_tar_line(word, loc)
+    let tar_line = tar.loc
     
     " Change current line with Ref
     let line = substitute(line, '\%>'.(idx-1).'c.*\%<'.(end+1).'c', ref, '')
